@@ -3,87 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digital Tazbih</title>
+    <title>Premium White Tazbih</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            background-color: #f0f2f5;
+            color: #333;
         }
         .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            width: 350px;
             text-align: center;
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            width: 300px;
         }
-        h2 { color: #333; margin-bottom: 20px; }
+        h2 { font-weight: 600; color: #2c3e50; margin-bottom: 5px; }
+        p.subtitle { font-size: 12px; color: #95a5a6; margin-bottom: 20px; }
+        
         #counter {
-            font-size: 70px;
+            font-size: 80px;
             font-weight: bold;
-            color: #2ecc71;
+            color: #27ae60;
             margin: 20px 0;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.05);
         }
+
         .main-btn {
-            width: 150px;
-            height: 150px;
+            width: 180px;
+            height: 180px;
             border-radius: 50%;
             border: none;
-            background-color: #2ecc71;
+            background: #27ae60;
             color: white;
-            font-size: 20px;
+            font-size: 22px;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
-            transition: transform 0.1s;
+            box-shadow: 0 8px 20px rgba(39, 174, 96, 0.3);
+            transition: all 0.2s;
+            margin-bottom: 25px;
+            -webkit-tap-highlight-color: transparent;
         }
         .main-btn:active {
-            transform: scale(0.95);
-            background-color: #27ae60;
+            transform: scale(0.92);
+            box-shadow: 0 4px 10px rgba(39, 174, 96, 0.2);
         }
-        .reset-btn {
-            margin-top: 30px;
+
+        .history-section {
+            text-align: left;
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .history-title { font-size: 14px; font-weight: bold; color: #7f8c8d; margin-bottom: 10px; }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 5px 0;
+            border-bottom: 1px dashed #f1f1f1;
+        }
+
+        .controls { display: flex; gap: 10px; justify-content: center; }
+        .btn {
             padding: 10px 20px;
-            background-color: #e74c3c;
-            color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
         }
+        .reset-btn { background: #fdf0ef; color: #e74c3c; }
+        .reset-btn:hover { background: #fde2e0; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <h2>Digital Tazbih</h2>
+        <p class="subtitle">Auto-save & History Enabled</p>
+        
         <div id="counter">0</div>
-        <button class="main-btn" onclick="count()">Tap</button>
-        <br>
-        <button class="reset-btn" onclick="reset()">Reset</button>
+        
+        <button class="main-btn" onclick="handleTap()">TAP</button>
+        
+        <div class="controls">
+            <button class="btn reset-btn" onclick="confirmReset()">RESET & SAVE</button>
+        </div>
+
+        <div class="history-section">
+            <div class="history-title">History (Last 5 Sessions)</div>
+            <div id="historyList"></div>
+        </div>
     </div>
 
-    <script>
-        let countValue = 0;
-        const counterDisplay = document.getElementById('counter');
+    <audio id="clickSound" src="https://www.soundjay.com/buttons/button-16.mp3"></audio>
 
-        function count() {
-            countValue++;
-            counterDisplay.innerText = countValue;
+    <script>
+        let count = localStorage.getItem('tazbihCount') ? parseInt(localStorage.getItem('tazbihCount')) : 0;
+        let history = JSON.parse(localStorage.getItem('tazbihHistory')) || [];
+
+        const counterDisplay = document.getElementById('counter');
+        const historyList = document.getElementById('historyList');
+        const clickSound = document.getElementById('clickSound');
+
+        // Initial Load
+        updateUI();
+
+        function handleTap() {
+            count++;
+            
+            // Sound play
+            clickSound.currentTime = 0;
+            clickSound.play();
+
+            // Vibrate
+            if (navigator.vibrate) {
+                if (count % 33 === 0) {
+                    navigator.vibrate([100, 50, 100]); // 33 hole boro vibration
+                } else {
+                    navigator.vibrate(40); // Normal click vibration
+                }
+            }
+
+            updateUI();
+            saveToStorage();
         }
 
-        function reset() {
-            if(confirm("Apni ki count zero korte chan?")) {
-                countValue = 0;
-                counterDisplay.innerText = countValue;
+        function updateUI() {
+            counterDisplay.innerText = count;
+            renderHistory();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('tazbihCount', count);
+            localStorage.setItem('tazbihHistory', JSON.stringify(history));
+        }
+
+        function confirmReset() {
+            if (count === 0) return;
+            
+            if (confirm("Apni ki count reset kore history-te save korte chan?")) {
+                const now = new Date();
+                const timeStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                // Add to history
+                history.unshift({ date: timeStr, value: count });
+                
+                // Keep only last 5 history items
+                if (history.length > 5) history.pop();
+                
+                count = 0;
+                updateUI();
+                saveToStorage();
             }
         }
-    </script>
 
+        function renderHistory() {
+            historyList.innerHTML = '';
+            if (history.length === 0) {
+                historyList.innerHTML = '<div style="color:#bdc3c7; font-size:12px;">No history yet.</div>';
+                return;
+            }
+            history.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `<span>${item.date}</span> <strong>${item.value}</strong>`;
+                historyList.appendChild(div);
+            });
+        }
+    </script>
 </body>
 </html>
-
